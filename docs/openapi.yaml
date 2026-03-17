@@ -1,0 +1,2265 @@
+openapi: 3.0.4
+info:
+  title: Supply Chain Risk API
+  description: |
+    OpenAPI contract for the weather ingestion, retrieval, processing, and risk analytics endpoints exposed through API Gateway and backed by AWS Lambda.
+  version: 1.0.0
+servers:
+- url: https://virtserver.swaggerhub.com/seng3011-d31/Supply-Chain-Risk-API-spec/1.0.0
+  description: SwaggerHub API Auto Mocking
+- url: "https://{apiId}.execute-api.{region}.amazonaws.com/{stage}"
+  description: AWS API Gateway deployment
+  variables:
+    apiId:
+      default: 8j2uou6h19
+    region:
+      default: us-east-1
+    stage:
+      default: dev
+tags:
+- name: Data collection microservice
+- name: Data retrieval microservice
+- name: Data processing microservice
+- name: Analytics microservice
+paths:
+  /ese/v1/ingest/weather/{hub_id}:
+    post:
+      tags:
+      - Data collection microservice
+      summary: Ingest weather forecast for a hub
+      description: |
+        Resolves latitude and longitude from `hub_id`, fetches the next week's weather forecast from PirateWeather API, and stores the raw data in the datalake. The backend validates `hub_id`.
+      parameters:
+      - name: hub_id
+        in: path
+        description: Unique identifier for the supply chain hub.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+        example: H001
+      responses:
+        "200":
+          description: Weather forecast was fetched and stored successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestResponse"
+        "400":
+          description: Invalid hub_id.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Missing data bucket configuration or PirateWeather API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /ese/v1/retrieve/raw/weather/{hub_id}:
+    get:
+      tags:
+      - Data retrieval microservice
+      summary: Retrieve raw Pirate Weather payload for a hub and date
+      description: |
+        Reads raw weather data from the datalake for the specified hub and date. The backend validates both `hub_id` and the `DD-MM-YYYY` date format.
+      parameters:
+      - name: hub_id
+        in: path
+        description: Unique identifier for the supply chain hub.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+        example: H001
+      - name: date
+        in: query
+        description: Target date in `DD-MM-YYYY` format.
+        required: true
+        style: form
+        explode: true
+        schema:
+          pattern: "^\\d{2}-\\d{2}-\\d{4}$"
+          type: string
+        example: 08-03-2026
+      responses:
+        "200":
+          description: Raw PirateWeather JSON response for the requested date.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetrieveRawWeatherResponse"
+        "400":
+          description: Invalid hub_id or missing/invalid date.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Raw weather data was not found for the given hub_id and date.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Missing data bucket configuration.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /ese/v1/retrieve/processed/weather/{hub_id}:
+    get:
+      tags:
+      - Data retrieval microservice
+      summary: Retrieve processed weather payload for a hub and date
+      description: |
+        Reads processed weather data from the datalake for the specified hub and date. The backend validates both `hub_id` and the `DD-MM-YYYY` date format.
+      parameters:
+      - name: hub_id
+        in: path
+        description: Unique identifier for the supply chain hub.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+        example: H001
+      - name: date
+        in: query
+        description: Target date in `DD-MM-YYYY` format.
+        required: true
+        style: form
+        explode: true
+        schema:
+          pattern: "^\\d{2}-\\d{2}-\\d{4}$"
+          type: string
+        example: 08-03-2026
+      responses:
+        "200":
+          description: Processed weather data in the ML model input schema.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetrieveProcessedWeatherResponse"
+        "400":
+          description: Invalid hub ID or missing/invalid date. `date` must be `DD-MM-YYYY`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Processed weather data was not found for the given hub and
+            date.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Missing data bucket configuration.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /ese/v1/process/weather:
+    post:
+      tags:
+      - Data processing microservice
+      summary: Process raw weather data into 6-hour forecast objects
+      description: |
+        Processes raw weather data using the ML model input schema for a given date by extracting hourly forecast entries for the next 7 days. Existing processed objects for the same date are overwritten. Request-body validation is handled by the backend service.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProcessWeatherRequest"
+        required: true
+      responses:
+        "200":
+          description: Processed weather objects created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProcessWeatherResponse"
+        "400":
+          description: Raw data not provided or not in the correct format.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Missing data bucket configuration.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /ese/v1/risk/location/{hub_id}:
+    get:
+      tags:
+      - Analytics microservice
+      summary: Retrieve the latest risk score for a hub
+      description: |
+        Returns the most recent risk score for the specified hub. The backend validates `hub_id`.
+      parameters:
+      - name: hub_id
+        in: path
+        description: Unique identifier for the supply chain hub.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+        example: H001
+      - name: date
+        in: query
+        description: Target date in `DD-MM-YYYY` format.
+        required: false
+        style: form
+        explode: true
+        schema:
+          pattern: "^\\d{2}-\\d{2}-\\d{4}$"
+          type: string
+        example: 08-03-2026
+      responses:
+        "200":
+          description: Latest risk score for the hub_id.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RiskLocationResponse"
+        "400":
+          description: "Invalid hub_id or date format, incorrect processed data format."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Processed data for hub_id not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+components:
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: error description
+    RetrieveRawWeatherResponse:
+      type: object
+      properties:
+        latitude:
+          type: number
+        longitude:
+          type: number
+        timezone:
+          type: string
+        offset:
+          type: integer
+        elevation:
+          type: integer
+        currently:
+          type: object
+          properties:
+            time:
+              type: integer
+            summary:
+              type: string
+            icon:
+              type: string
+            nearestStormDistance:
+              type: number
+            nearestStormBearing:
+              type: integer
+            precipIntensity:
+              type: integer
+            precipProbability:
+              type: integer
+            precipIntensityError:
+              type: integer
+            precipType:
+              type: string
+            rainIntensity:
+              type: integer
+            snowIntensity:
+              type: integer
+            iceIntensity:
+              type: integer
+            temperature:
+              type: number
+            apparentTemperature:
+              type: number
+            dewPoint:
+              type: number
+            humidity:
+              type: number
+            pressure:
+              type: number
+            windSpeed:
+              type: number
+            windGust:
+              type: number
+            windBearing:
+              type: integer
+            cloudCover:
+              type: number
+            uvIndex:
+              type: number
+            visibility:
+              type: integer
+            ozone:
+              type: number
+            smoke:
+              type: number
+            fireIndex:
+              type: number
+            feelsLike:
+              type: number
+            currentDayIce:
+              type: integer
+            currentDayLiquid:
+              type: integer
+            currentDaySnow:
+              type: integer
+            stationPressure:
+              type: integer
+            solar:
+              type: number
+            cape:
+              type: integer
+        minutely:
+          type: object
+          properties:
+            summary:
+              type: string
+            icon:
+              type: string
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  time:
+                    type: integer
+                  precipIntensity:
+                    type: integer
+                  precipProbability:
+                    type: number
+                  precipIntensityError:
+                    type: integer
+                  precipType:
+                    type: string
+                  rainIntensity:
+                    type: integer
+                  snowIntensity:
+                    type: integer
+                  iceIntensity:
+                    type: integer
+        hourly:
+          type: object
+          properties:
+            summary:
+              type: string
+            icon:
+              type: string
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  time:
+                    type: integer
+                  summary:
+                    type: string
+                  icon:
+                    type: string
+                  precipIntensity:
+                    type: integer
+                  precipProbability:
+                    type: integer
+                  precipIntensityError:
+                    type: integer
+                  precipAccumulation:
+                    type: integer
+                  precipType:
+                    type: string
+                  rainIntensity:
+                    type: integer
+                  snowIntensity:
+                    type: integer
+                  iceIntensity:
+                    type: integer
+                  temperature:
+                    type: number
+                  apparentTemperature:
+                    type: number
+                  dewPoint:
+                    type: number
+                  humidity:
+                    type: number
+                  pressure:
+                    type: number
+                  stationPressure:
+                    type: number
+                  windSpeed:
+                    type: number
+                  windGust:
+                    type: number
+                  windBearing:
+                    type: integer
+                  cloudCover:
+                    type: number
+                  uvIndex:
+                    type: number
+                  visibility:
+                    type: integer
+                  ozone:
+                    type: number
+                  smoke:
+                    type: number
+                  liquidAccumulation:
+                    type: integer
+                  snowAccumulation:
+                    type: integer
+                  iceAccumulation:
+                    type: integer
+                  nearestStormDistance:
+                    type: number
+                  nearestStormBearing:
+                    type: integer
+                  fireIndex:
+                    type: number
+                  feelsLike:
+                    type: number
+                  solar:
+                    type: number
+                  cape:
+                    type: integer
+        day_night:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  time:
+                    type: integer
+                  summary:
+                    type: string
+                  icon:
+                    type: string
+                  precipIntensity:
+                    type: integer
+                  precipIntensityMax:
+                    type: integer
+                  rainIntensity:
+                    type: integer
+                  rainIntensityMax:
+                    type: integer
+                  snowIntensity:
+                    type: integer
+                  snowIntensityMax:
+                    type: integer
+                  iceIntensity:
+                    type: integer
+                  iceIntensityMax:
+                    type: integer
+                  precipProbability:
+                    type: integer
+                  precipIntensityError:
+                    type: integer
+                  precipAccumulation:
+                    type: integer
+                  precipType:
+                    type: string
+                  temperature:
+                    type: number
+                  apparentTemperature:
+                    type: number
+                  dewPoint:
+                    type: number
+                  humidity:
+                    type: number
+                  pressure:
+                    type: number
+                  stationPressure:
+                    type: number
+                  windSpeed:
+                    type: number
+                  windGust:
+                    type: number
+                  windBearing:
+                    type: integer
+                  cloudCover:
+                    type: number
+                  uvIndex:
+                    type: number
+                  visibility:
+                    type: integer
+                  ozone:
+                    type: number
+                  smoke:
+                    type: number
+                  liquidAccumulation:
+                    type: integer
+                  snowAccumulation:
+                    type: integer
+                  iceAccumulation:
+                    type: integer
+                  fireIndex:
+                    type: number
+                  solar:
+                    type: number
+                  cape:
+                    type: integer
+        daily:
+          type: object
+          properties:
+            summary:
+              type: string
+            icon:
+              type: string
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  time:
+                    type: integer
+                  summary:
+                    type: string
+                  icon:
+                    type: string
+                  dawnTime:
+                    type: integer
+                  sunriseTime:
+                    type: integer
+                  sunsetTime:
+                    type: integer
+                  duskTime:
+                    type: integer
+                  moonPhase:
+                    type: number
+                  precipIntensity:
+                    type: integer
+                  precipIntensityMax:
+                    type: integer
+                  precipIntensityMaxTime:
+                    type: integer
+                  precipProbability:
+                    type: integer
+                  precipAccumulation:
+                    type: integer
+                  precipType:
+                    type: string
+                  rainIntensity:
+                    type: integer
+                  rainIntensityMax:
+                    type: integer
+                  snowIntensity:
+                    type: integer
+                  snowIntensityMax:
+                    type: integer
+                  iceIntensity:
+                    type: integer
+                  iceIntensityMax:
+                    type: integer
+                  temperatureHigh:
+                    type: number
+                  temperatureHighTime:
+                    type: integer
+                  temperatureLow:
+                    type: number
+                  temperatureLowTime:
+                    type: integer
+                  apparentTemperatureHigh:
+                    type: number
+                  apparentTemperatureHighTime:
+                    type: integer
+                  apparentTemperatureLow:
+                    type: number
+                  apparentTemperatureLowTime:
+                    type: integer
+                  dewPoint:
+                    type: number
+                  humidity:
+                    type: number
+                  pressure:
+                    type: number
+                  windSpeed:
+                    type: number
+                  windGust:
+                    type: number
+                  windGustTime:
+                    type: integer
+                  windBearing:
+                    type: integer
+                  cloudCover:
+                    type: number
+                  uvIndex:
+                    type: number
+                  uvIndexTime:
+                    type: integer
+                  visibility:
+                    type: number
+                  temperatureMin:
+                    type: number
+                  temperatureMinTime:
+                    type: integer
+                  temperatureMax:
+                    type: number
+                  temperatureMaxTime:
+                    type: integer
+                  apparentTemperatureMin:
+                    type: number
+                  apparentTemperatureMinTime:
+                    type: integer
+                  apparentTemperatureMax:
+                    type: number
+                  apparentTemperatureMaxTime:
+                    type: integer
+                  smokeMax:
+                    type: number
+                  smokeMaxTime:
+                    type: integer
+                  liquidAccumulation:
+                    type: integer
+                  snowAccumulation:
+                    type: integer
+                  iceAccumulation:
+                    type: integer
+                  fireIndexMax:
+                    type: number
+                  fireIndexMaxTime:
+                    type: integer
+                  solar:
+                    type: number
+                  solarMax:
+                    type: integer
+                  cape:
+                    type: integer
+                  capeMax:
+                    type: integer
+        alerts:
+          type: array
+          items:
+            type: object
+            properties:
+              title:
+                type: string
+              regions:
+                type: array
+                items:
+                  type: string
+              severity:
+                type: string
+              time:
+                type: integer
+              expires:
+                type: integer
+              description:
+                type: string
+              uri:
+                type: string
+        flags:
+          type: object
+          properties:
+            sources:
+              type: array
+              items:
+                type: string
+            sourceTimes:
+              type: object
+              properties:
+                hrrr_subh:
+                  type: string
+                rtma_ru:
+                  type: string
+                hrrr_0-18:
+                  type: string
+                nbm:
+                  type: string
+                nbm_fire:
+                  type: string
+                dwd_mosmix:
+                  type: string
+                ecmwf_ifs:
+                  type: string
+                hrrr_18-48:
+                  type: string
+                gfs:
+                  type: string
+                gefs:
+                  type: string
+            nearest-station:
+              type: number
+            units:
+              type: string
+            version:
+              type: string
+            sourceIDX:
+              type: object
+              properties:
+                hrrr:
+                  type: object
+                  properties:
+                    x:
+                      type: integer
+                    "y":
+                      type: integer
+                    lat:
+                      type: number
+                    long:
+                      type: number
+                nbm:
+                  type: object
+                  properties:
+                    x:
+                      type: integer
+                    "y":
+                      type: integer
+                    lat:
+                      type: number
+                    long:
+                      type: number
+                ecmwf_ifs:
+                  type: object
+                  properties:
+                    x:
+                      type: integer
+                    "y":
+                      type: integer
+                    lat:
+                      type: number
+                    long:
+                      type: number
+                dwd_mosmix:
+                  type: object
+                  properties:
+                    stations:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        lat:
+                          type: number
+                        long:
+                          type: number
+                rtma_ru:
+                  type: object
+                  properties:
+                    x:
+                      type: integer
+                    "y":
+                      type: integer
+                    lat:
+                      type: number
+                    long:
+                      type: number
+                gfs:
+                  type: object
+                  properties:
+                    x:
+                      type: integer
+                    "y":
+                      type: integer
+                    lat:
+                      type: number
+                    long:
+                      type: number
+                etopo:
+                  type: object
+                  properties:
+                    x:
+                      type: integer
+                    "y":
+                      type: integer
+                    lat:
+                      type: number
+                    long:
+                      type: number
+            processTime:
+              type: integer
+            ingestVersion:
+              type: string
+            nearestCity:
+              type: string
+            nearestCountry:
+              type: string
+            nearestSubNational:
+              type: string
+      x-examples:
+        Example 1:
+          latitude: 37.3035
+          longitude: -89.523
+          timezone: America/Chicago
+          offset: -6
+          elevation: 105
+          currently:
+            time: 1762721160
+            summary: Breezy and Mostly Clear
+            icon: wind
+            nearestStormDistance: 194.97
+            nearestStormBearing: 131
+            precipIntensity: 0
+            precipProbability: 0
+            precipIntensityError: 0
+            precipType: none
+            rainIntensity: 0
+            snowIntensity: 0
+            iceIntensity: 0
+            temperature: 42.15
+            apparentTemperature: 29.95
+            dewPoint: 24.21
+            humidity: 0.49
+            pressure: 1024.45
+            windSpeed: 17.25
+            windGust: 24.93
+            windBearing: 333
+            cloudCover: 0.14
+            uvIndex: 2.19
+            visibility: 10
+            ozone: 321.45
+            smoke: 0.34
+            fireIndex: 27.58
+            feelsLike: 33.75
+            currentDayIce: 0
+            currentDayLiquid: 0
+            currentDaySnow: 0
+            stationPressure: 0
+            solar: 319.73
+            cape: 3
+          minutely:
+            summary: Breezy and mostly clear for the hour.
+            icon: wind
+            data:
+            - time: 1762721160
+              precipIntensity: 0
+              precipProbability: 0.38
+              precipIntensityError: 0
+              precipType: none
+              rainIntensity: 0
+              snowIntensity: 0
+              iceIntensity: 0
+          hourly:
+            summary: "Breezy until this evening, starting again tomorrow morning."
+            icon: wind
+            data:
+            - time: 1762718400
+              summary: Breezy and Mostly Clear
+              icon: wind
+              precipIntensity: 0
+              precipProbability: 0
+              precipIntensityError: 0
+              precipAccumulation: 0
+              precipType: none
+              rainIntensity: 0
+              snowIntensity: 0
+              iceIntensity: 0
+              temperature: 42.22
+              apparentTemperature: 31.26
+              dewPoint: 23.85
+              humidity: 0.47
+              pressure: 1024.02
+              stationPressure: 1009.92
+              windSpeed: 16.98
+              windGust: 27.48
+              windBearing: 330
+              cloudCover: 0.35
+              uvIndex: 2.93
+              visibility: 10
+              ozone: 319.3
+              smoke: 0.4
+              liquidAccumulation: 0
+              snowAccumulation: 0
+              iceAccumulation: 0
+              nearestStormDistance: 172.16
+              nearestStormBearing: 127
+              fireIndex: 27.2
+              feelsLike: 34.38
+              solar: 498.64
+              cape: 0
+          day_night:
+            data:
+            - time: 1762682400
+              summary: Breezy throughout the day.
+              icon: wind
+              precipIntensity: 0
+              precipIntensityMax: 0
+              rainIntensity: 0
+              rainIntensityMax: 0
+              snowIntensity: 0
+              snowIntensityMax: 0
+              iceIntensity: 0
+              iceIntensityMax: 0
+              precipProbability: 0
+              precipIntensityError: 0
+              precipAccumulation: 0
+              precipType: none
+              temperature: 42.82
+              apparentTemperature: 32.32
+              dewPoint: 29.17
+              humidity: 0.62
+              pressure: 1021.06
+              stationPressure: 1009.92
+              windSpeed: 16.15
+              windGust: 26.4
+              windBearing: 328
+              cloudCover: 0.58
+              uvIndex: 1.15
+              visibility: 10
+              ozone: 317.12
+              smoke: 0.12
+              liquidAccumulation: 0
+              snowAccumulation: 0
+              iceAccumulation: 0
+              fireIndex: 22.08
+              solar: 178.72
+              cape: 4
+          daily:
+            summary: "Drizzle next Sunday, with high temperatures peaking at 71°F\
+              \ on Friday."
+            icon: rain
+            data:
+            - time: 1762668000
+              summary: Breezy until evening.
+              icon: wind
+              dawnTime: 1762689813
+              sunriseTime: 1762691493
+              sunsetTime: 1762728710
+              duskTime: 1762730390
+              moonPhase: 0.65
+              precipIntensity: 0
+              precipIntensityMax: 0
+              precipIntensityMaxTime: 1762668000
+              precipProbability: 0
+              precipAccumulation: 0
+              precipType: none
+              rainIntensity: 0
+              rainIntensityMax: 0
+              snowIntensity: 0
+              snowIntensityMax: 0
+              iceIntensity: 0
+              iceIntensityMax: 0
+              temperatureHigh: 42.82
+              temperatureHighTime: 1762707600
+              temperatureLow: 26.6
+              temperatureLowTime: 1762776000
+              apparentTemperatureHigh: 32.32
+              apparentTemperatureHighTime: 1762714800
+              apparentTemperatureLow: 15.43
+              apparentTemperatureLowTime: 1762776000
+              dewPoint: 27.67
+              humidity: 0.61
+              pressure: 1021.84
+              windSpeed: 14.07
+              windGust: 23.52
+              windGustTime: 1762714800
+              windBearing: 327
+              cloudCover: 0.43
+              uvIndex: 3.52
+              uvIndexTime: 1762714800
+              visibility: 9.68
+              temperatureMin: 29.77
+              temperatureMinTime: 1762750800
+              temperatureMax: 51.69
+              temperatureMaxTime: 1762668000
+              apparentTemperatureMin: 19.21
+              apparentTemperatureMinTime: 1762747200
+              apparentTemperatureMax: 43.62
+              apparentTemperatureMaxTime: 1762668000
+              smokeMax: 0.66
+              smokeMaxTime: 1762714800
+              liquidAccumulation: 0
+              snowAccumulation: 0
+              iceAccumulation: 0
+              fireIndexMax: 29.2
+              fireIndexMaxTime: 1762732800
+              solar: 558.76
+              solarMax: 1762714800
+              cape: 19
+              capeMax: 1762707600
+          alerts:
+          - title: Flood Warning
+            regions:
+            - "Alexander, IL"
+            severity: Severe
+            time: 1715357220
+            expires: 1715451300
+            description: "...The Flood Warning is extended for the following river\
+              \ in Illinois...Missouri...Kentucky...  Mississippi River at Cape Girardeau,\
+              \ Thebes, and Hickman.  .With recent heavy rainfall, waters are rising\
+              \ on the Mississippi River with crests in minor flood at Cape Girardeau,\
+              \ Thebes, and Hickman early next week.  For the Mississippi River...including\
+              \ Cape Girardeau, Thebes, Hickman...Minor flooding is forecast.  * WHAT...Minor\
+              \ flooding is occurring and minor flooding is forecast.  * WHERE...Mississippi\
+              \ River at Cape Girardeau.  * WHEN...Until Friday, May 17.  * IMPACTS...At\
+              \ 36.0 feet, The flood gate on Themis Street closes.  * ADDITIONAL DETAILS...\
+              \ - At 11:00 AM CDT Friday the stage was 34.4 feet. - Forecast...The\
+              \ river is expected to rise to a crest of 36.0 feet Monday morning.\
+              \ It will then fall below flood stage late Thursday evening. - Flood\
+              \ stage is 32.0 feet."
+            uri: https://alerts.weather.gov/search?id=urn:oid:2.49.0.1.840.0.f24c2a5f205f53c0f443861ac62244cc6aecfc9c.002.1
+          flags:
+            sources:
+            - ETOPO1
+            sourceTimes:
+              hrrr_subh: 2025-11-09 18Z
+              rtma_ru: 2025-11-09 20:15Z
+              hrrr_0-18: 2025-11-09 18Z
+              nbm: 2025-11-09 17Z
+              nbm_fire: 2025-11-09 12Z
+              dwd_mosmix: 2025-11-09 13Z
+              ecmwf_ifs: 2025-11-09 00Z
+              hrrr_18-48: 2025-11-09 18Z
+              gfs: 2025-11-09 12Z
+              gefs: 2025-11-09 12Z
+            nearest-station: 15.68
+            units: us
+            version: V2.9.2
+            sourceIDX:
+              hrrr:
+                x: 1134
+                "y": 495
+                lat: 37.31
+                long: -89.53
+              nbm:
+                x: 1483
+                "y": 651
+                lat: 37.31
+                long: -89.53
+              ecmwf_ifs:
+                x: 362
+                "y": 211
+                lat: 37.25
+                long: -89.5
+              dwd_mosmix:
+                stations:
+                  id: "72530"
+                  name: CHICAGO
+                  lat: 41.98
+                  long: -87.9
+              rtma_ru:
+                x: 1483
+                "y": 651
+                lat: 37.31
+                long: -89.53
+              gfs:
+                x: 1082
+                "y": 509
+                lat: 37.25
+                long: -89.5
+              etopo:
+                x: 5429
+                "y": 7638
+                lat: 37.3
+                long: -89.5166
+            processTime: 12026
+            ingestVersion: v29
+            nearestCity: Cape Girardeau
+            nearestCountry: United States
+            nearestSubNational: Missouri
+    RetrieveProcessedWeatherResponse:
+      type: object
+      properties:
+        schema_version:
+          type: string
+        hub_id:
+          type: string
+        hub_name:
+          type: string
+        lat:
+          type: number
+        lon:
+          type: number
+        forecast_origin:
+          type: string
+        days:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+              day:
+                type: integer
+              snapshots:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    forecast_timestamp:
+                      type: string
+                    forecast_lead_hours:
+                      type: integer
+                    features:
+                      type: object
+                      properties:
+                        temperature:
+                          type: number
+                        wind_speed:
+                          type: number
+                        wind_gust:
+                          type: number
+                        precip_intensity:
+                          type: integer
+                        pressure:
+                          type: number
+                        humidity:
+                          type: number
+      x-examples:
+        Example 1:
+          schema_version: "1.0"
+          hub_id: H007
+          hub_name: Jebel Ali Port
+          lat: 25.065
+          lon: 55.13
+          forecast_origin: 2026-03-10T00:00:00Z
+          days:
+          - date: 2026-03-10
+            day: 1
+            snapshots:
+            - forecast_timestamp: 2026-03-10T00:00:00Z
+              forecast_lead_hours: 0
+              features:
+                temperature: 24.2
+                wind_speed: 16.3
+                wind_gust: 24.8
+                precip_intensity: 0
+                pressure: 1015.6
+                humidity: 0.58
+            - forecast_timestamp: 2026-03-10T06:00:00Z
+              forecast_lead_hours: 6
+              features:
+                temperature: 27.8
+                wind_speed: 21.4
+                wind_gust: 33.6
+                precip_intensity: 0
+                pressure: 1014.3
+                humidity: 0.52
+            - forecast_timestamp: 2026-03-10T12:00:00Z
+              forecast_lead_hours: 12
+              features:
+                temperature: 31.4
+                wind_speed: 28.7
+                wind_gust: 44.1
+                precip_intensity: 0
+                pressure: 1013.1
+                humidity: 0.44
+            - forecast_timestamp: 2026-03-10T18:00:00Z
+              forecast_lead_hours: 18
+              features:
+                temperature: 26.3
+                wind_speed: 18.9
+                wind_gust: 29.3
+                precip_intensity: 0
+                pressure: 1014.8
+                humidity: 0.55
+          - date: 2026-03-11
+            day: 2
+            snapshots:
+            - forecast_timestamp: 2026-03-11T00:00:00Z
+              forecast_lead_hours: 24
+              features:
+                temperature: 24.2
+                wind_speed: 16.3
+                wind_gust: 24.8
+                precip_intensity: 0
+                pressure: 1015.6
+                humidity: 0.58
+            - forecast_timestamp: 2026-03-11T06:00:00Z
+              forecast_lead_hours: 30
+              features:
+                temperature: 27.8
+                wind_speed: 21.4
+                wind_gust: 33.6
+                precip_intensity: 0
+                pressure: 1014.3
+                humidity: 0.52
+            - forecast_timestamp: 2026-03-11T12:00:00Z
+              forecast_lead_hours: 36
+              features:
+                temperature: 31.4
+                wind_speed: 28.7
+                wind_gust: 44.1
+                precip_intensity: 0
+                pressure: 1013.1
+                humidity: 0.44
+            - forecast_timestamp: 2026-03-11T18:00:00Z
+              forecast_lead_hours: 42
+              features:
+                temperature: 26.3
+                wind_speed: 18.9
+                wind_gust: 29.3
+                precip_intensity: 0
+                pressure: 1014.8
+                humidity: 0.55
+    ProcessWeatherRequest:
+      title: ""
+      type: object
+      properties:
+        latitude:
+          type: number
+        longitude:
+          type: number
+        timezone:
+          type: string
+        offset:
+          type: integer
+        elevation:
+          type: integer
+        currently:
+          type: object
+          properties:
+            time:
+              type: integer
+            summary:
+              type: string
+            icon:
+              type: string
+            nearestStormDistance:
+              type: number
+            nearestStormBearing:
+              type: integer
+            precipIntensity:
+              type: integer
+            precipProbability:
+              type: integer
+            precipIntensityError:
+              type: integer
+            precipType:
+              type: string
+            rainIntensity:
+              type: integer
+            snowIntensity:
+              type: integer
+            iceIntensity:
+              type: integer
+            temperature:
+              type: number
+            apparentTemperature:
+              type: number
+            dewPoint:
+              type: number
+            humidity:
+              type: number
+            pressure:
+              type: number
+            windSpeed:
+              type: number
+            windGust:
+              type: number
+            windBearing:
+              type: integer
+            cloudCover:
+              type: number
+            uvIndex:
+              type: number
+            visibility:
+              type: integer
+            ozone:
+              type: number
+            smoke:
+              type: number
+            fireIndex:
+              type: number
+            feelsLike:
+              type: number
+            currentDayIce:
+              type: integer
+            currentDayLiquid:
+              type: integer
+            currentDaySnow:
+              type: integer
+            stationPressure:
+              type: integer
+            solar:
+              type: number
+            cape:
+              type: integer
+        minutely:
+          type: object
+          properties:
+            summary:
+              type: string
+            icon:
+              type: string
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  time:
+                    type: integer
+                  precipIntensity:
+                    type: integer
+                  precipProbability:
+                    type: number
+                  precipIntensityError:
+                    type: integer
+                  precipType:
+                    type: string
+                  rainIntensity:
+                    type: integer
+                  snowIntensity:
+                    type: integer
+                  iceIntensity:
+                    type: integer
+        hourly:
+          type: object
+          properties:
+            summary:
+              type: string
+            icon:
+              type: string
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  time:
+                    type: integer
+                  summary:
+                    type: string
+                  icon:
+                    type: string
+                  precipIntensity:
+                    type: integer
+                  precipProbability:
+                    type: integer
+                  precipIntensityError:
+                    type: integer
+                  precipAccumulation:
+                    type: integer
+                  precipType:
+                    type: string
+                  rainIntensity:
+                    type: integer
+                  snowIntensity:
+                    type: integer
+                  iceIntensity:
+                    type: integer
+                  temperature:
+                    type: number
+                  apparentTemperature:
+                    type: number
+                  dewPoint:
+                    type: number
+                  humidity:
+                    type: number
+                  pressure:
+                    type: number
+                  stationPressure:
+                    type: number
+                  windSpeed:
+                    type: number
+                  windGust:
+                    type: number
+                  windBearing:
+                    type: integer
+                  cloudCover:
+                    type: number
+                  uvIndex:
+                    type: number
+                  visibility:
+                    type: integer
+                  ozone:
+                    type: number
+                  smoke:
+                    type: number
+                  liquidAccumulation:
+                    type: integer
+                  snowAccumulation:
+                    type: integer
+                  iceAccumulation:
+                    type: integer
+                  nearestStormDistance:
+                    type: number
+                  nearestStormBearing:
+                    type: integer
+                  fireIndex:
+                    type: number
+                  feelsLike:
+                    type: number
+                  solar:
+                    type: number
+                  cape:
+                    type: integer
+        day_night:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  time:
+                    type: integer
+                  summary:
+                    type: string
+                  icon:
+                    type: string
+                  precipIntensity:
+                    type: integer
+                  precipIntensityMax:
+                    type: integer
+                  rainIntensity:
+                    type: integer
+                  rainIntensityMax:
+                    type: integer
+                  snowIntensity:
+                    type: integer
+                  snowIntensityMax:
+                    type: integer
+                  iceIntensity:
+                    type: integer
+                  iceIntensityMax:
+                    type: integer
+                  precipProbability:
+                    type: integer
+                  precipIntensityError:
+                    type: integer
+                  precipAccumulation:
+                    type: integer
+                  precipType:
+                    type: string
+                  temperature:
+                    type: number
+                  apparentTemperature:
+                    type: number
+                  dewPoint:
+                    type: number
+                  humidity:
+                    type: number
+                  pressure:
+                    type: number
+                  stationPressure:
+                    type: number
+                  windSpeed:
+                    type: number
+                  windGust:
+                    type: number
+                  windBearing:
+                    type: integer
+                  cloudCover:
+                    type: number
+                  uvIndex:
+                    type: number
+                  visibility:
+                    type: integer
+                  ozone:
+                    type: number
+                  smoke:
+                    type: number
+                  liquidAccumulation:
+                    type: integer
+                  snowAccumulation:
+                    type: integer
+                  iceAccumulation:
+                    type: integer
+                  fireIndex:
+                    type: number
+                  solar:
+                    type: number
+                  cape:
+                    type: integer
+        daily:
+          type: object
+          properties:
+            summary:
+              type: string
+            icon:
+              type: string
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  time:
+                    type: integer
+                  summary:
+                    type: string
+                  icon:
+                    type: string
+                  dawnTime:
+                    type: integer
+                  sunriseTime:
+                    type: integer
+                  sunsetTime:
+                    type: integer
+                  duskTime:
+                    type: integer
+                  moonPhase:
+                    type: number
+                  precipIntensity:
+                    type: integer
+                  precipIntensityMax:
+                    type: integer
+                  precipIntensityMaxTime:
+                    type: integer
+                  precipProbability:
+                    type: integer
+                  precipAccumulation:
+                    type: integer
+                  precipType:
+                    type: string
+                  rainIntensity:
+                    type: integer
+                  rainIntensityMax:
+                    type: integer
+                  snowIntensity:
+                    type: integer
+                  snowIntensityMax:
+                    type: integer
+                  iceIntensity:
+                    type: integer
+                  iceIntensityMax:
+                    type: integer
+                  temperatureHigh:
+                    type: number
+                  temperatureHighTime:
+                    type: integer
+                  temperatureLow:
+                    type: number
+                  temperatureLowTime:
+                    type: integer
+                  apparentTemperatureHigh:
+                    type: number
+                  apparentTemperatureHighTime:
+                    type: integer
+                  apparentTemperatureLow:
+                    type: number
+                  apparentTemperatureLowTime:
+                    type: integer
+                  dewPoint:
+                    type: number
+                  humidity:
+                    type: number
+                  pressure:
+                    type: number
+                  windSpeed:
+                    type: number
+                  windGust:
+                    type: number
+                  windGustTime:
+                    type: integer
+                  windBearing:
+                    type: integer
+                  cloudCover:
+                    type: number
+                  uvIndex:
+                    type: number
+                  uvIndexTime:
+                    type: integer
+                  visibility:
+                    type: number
+                  temperatureMin:
+                    type: number
+                  temperatureMinTime:
+                    type: integer
+                  temperatureMax:
+                    type: number
+                  temperatureMaxTime:
+                    type: integer
+                  apparentTemperatureMin:
+                    type: number
+                  apparentTemperatureMinTime:
+                    type: integer
+                  apparentTemperatureMax:
+                    type: number
+                  apparentTemperatureMaxTime:
+                    type: integer
+                  smokeMax:
+                    type: number
+                  smokeMaxTime:
+                    type: integer
+                  liquidAccumulation:
+                    type: integer
+                  snowAccumulation:
+                    type: integer
+                  iceAccumulation:
+                    type: integer
+                  fireIndexMax:
+                    type: number
+                  fireIndexMaxTime:
+                    type: integer
+                  solar:
+                    type: number
+                  solarMax:
+                    type: integer
+                  cape:
+                    type: integer
+                  capeMax:
+                    type: integer
+        alerts:
+          type: array
+          items:
+            type: object
+            properties:
+              title:
+                type: string
+              regions:
+                type: array
+                items:
+                  type: string
+              severity:
+                type: string
+              time:
+                type: integer
+              expires:
+                type: integer
+              description:
+                type: string
+              uri:
+                type: string
+        flags:
+          type: object
+          properties:
+            sources:
+              type: array
+              items:
+                type: string
+            sourceTimes:
+              type: object
+              properties:
+                hrrr_subh:
+                  type: string
+                rtma_ru:
+                  type: string
+                hrrr_0-18:
+                  type: string
+                nbm:
+                  type: string
+                nbm_fire:
+                  type: string
+                dwd_mosmix:
+                  type: string
+                ecmwf_ifs:
+                  type: string
+                hrrr_18-48:
+                  type: string
+                gfs:
+                  type: string
+                gefs:
+                  type: string
+            nearest-station:
+              type: number
+            units:
+              type: string
+            version:
+              type: string
+            sourceIDX:
+              type: object
+              properties:
+                hrrr:
+                  type: object
+                  properties:
+                    x:
+                      type: integer
+                    "y":
+                      type: integer
+                    lat:
+                      type: number
+                    long:
+                      type: number
+                nbm:
+                  type: object
+                  properties:
+                    x:
+                      type: integer
+                    "y":
+                      type: integer
+                    lat:
+                      type: number
+                    long:
+                      type: number
+                ecmwf_ifs:
+                  type: object
+                  properties:
+                    x:
+                      type: integer
+                    "y":
+                      type: integer
+                    lat:
+                      type: number
+                    long:
+                      type: number
+                dwd_mosmix:
+                  type: object
+                  properties:
+                    stations:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        lat:
+                          type: number
+                        long:
+                          type: number
+                rtma_ru:
+                  type: object
+                  properties:
+                    x:
+                      type: integer
+                    "y":
+                      type: integer
+                    lat:
+                      type: number
+                    long:
+                      type: number
+                gfs:
+                  type: object
+                  properties:
+                    x:
+                      type: integer
+                    "y":
+                      type: integer
+                    lat:
+                      type: number
+                    long:
+                      type: number
+                etopo:
+                  type: object
+                  properties:
+                    x:
+                      type: integer
+                    "y":
+                      type: integer
+                    lat:
+                      type: number
+                    long:
+                      type: number
+            processTime:
+              type: integer
+            ingestVersion:
+              type: string
+            nearestCity:
+              type: string
+            nearestCountry:
+              type: string
+            nearestSubNational:
+              type: string
+      x-examples:
+        Example 1:
+          latitude: 37.3035
+          longitude: -89.523
+          timezone: America/Chicago
+          offset: -6
+          elevation: 105
+          currently:
+            time: 1762721160
+            summary: Breezy and Mostly Clear
+            icon: wind
+            nearestStormDistance: 194.97
+            nearestStormBearing: 131
+            precipIntensity: 0
+            precipProbability: 0
+            precipIntensityError: 0
+            precipType: none
+            rainIntensity: 0
+            snowIntensity: 0
+            iceIntensity: 0
+            temperature: 42.15
+            apparentTemperature: 29.95
+            dewPoint: 24.21
+            humidity: 0.49
+            pressure: 1024.45
+            windSpeed: 17.25
+            windGust: 24.93
+            windBearing: 333
+            cloudCover: 0.14
+            uvIndex: 2.19
+            visibility: 10
+            ozone: 321.45
+            smoke: 0.34
+            fireIndex: 27.58
+            feelsLike: 33.75
+            currentDayIce: 0
+            currentDayLiquid: 0
+            currentDaySnow: 0
+            stationPressure: 0
+            solar: 319.73
+            cape: 3
+          minutely:
+            summary: Breezy and mostly clear for the hour.
+            icon: wind
+            data:
+            - time: 1762721160
+              precipIntensity: 0
+              precipProbability: 0.38
+              precipIntensityError: 0
+              precipType: none
+              rainIntensity: 0
+              snowIntensity: 0
+              iceIntensity: 0
+          hourly:
+            summary: "Breezy until this evening, starting again tomorrow morning."
+            icon: wind
+            data:
+            - time: 1762718400
+              summary: Breezy and Mostly Clear
+              icon: wind
+              precipIntensity: 0
+              precipProbability: 0
+              precipIntensityError: 0
+              precipAccumulation: 0
+              precipType: none
+              rainIntensity: 0
+              snowIntensity: 0
+              iceIntensity: 0
+              temperature: 42.22
+              apparentTemperature: 31.26
+              dewPoint: 23.85
+              humidity: 0.47
+              pressure: 1024.02
+              stationPressure: 1009.92
+              windSpeed: 16.98
+              windGust: 27.48
+              windBearing: 330
+              cloudCover: 0.35
+              uvIndex: 2.93
+              visibility: 10
+              ozone: 319.3
+              smoke: 0.4
+              liquidAccumulation: 0
+              snowAccumulation: 0
+              iceAccumulation: 0
+              nearestStormDistance: 172.16
+              nearestStormBearing: 127
+              fireIndex: 27.2
+              feelsLike: 34.38
+              solar: 498.64
+              cape: 0
+          day_night:
+            data:
+            - time: 1762682400
+              summary: Breezy throughout the day.
+              icon: wind
+              precipIntensity: 0
+              precipIntensityMax: 0
+              rainIntensity: 0
+              rainIntensityMax: 0
+              snowIntensity: 0
+              snowIntensityMax: 0
+              iceIntensity: 0
+              iceIntensityMax: 0
+              precipProbability: 0
+              precipIntensityError: 0
+              precipAccumulation: 0
+              precipType: none
+              temperature: 42.82
+              apparentTemperature: 32.32
+              dewPoint: 29.17
+              humidity: 0.62
+              pressure: 1021.06
+              stationPressure: 1009.92
+              windSpeed: 16.15
+              windGust: 26.4
+              windBearing: 328
+              cloudCover: 0.58
+              uvIndex: 1.15
+              visibility: 10
+              ozone: 317.12
+              smoke: 0.12
+              liquidAccumulation: 0
+              snowAccumulation: 0
+              iceAccumulation: 0
+              fireIndex: 22.08
+              solar: 178.72
+              cape: 4
+          daily:
+            summary: "Drizzle next Sunday, with high temperatures peaking at 71°F\
+              \ on Friday."
+            icon: rain
+            data:
+            - time: 1762668000
+              summary: Breezy until evening.
+              icon: wind
+              dawnTime: 1762689813
+              sunriseTime: 1762691493
+              sunsetTime: 1762728710
+              duskTime: 1762730390
+              moonPhase: 0.65
+              precipIntensity: 0
+              precipIntensityMax: 0
+              precipIntensityMaxTime: 1762668000
+              precipProbability: 0
+              precipAccumulation: 0
+              precipType: none
+              rainIntensity: 0
+              rainIntensityMax: 0
+              snowIntensity: 0
+              snowIntensityMax: 0
+              iceIntensity: 0
+              iceIntensityMax: 0
+              temperatureHigh: 42.82
+              temperatureHighTime: 1762707600
+              temperatureLow: 26.6
+              temperatureLowTime: 1762776000
+              apparentTemperatureHigh: 32.32
+              apparentTemperatureHighTime: 1762714800
+              apparentTemperatureLow: 15.43
+              apparentTemperatureLowTime: 1762776000
+              dewPoint: 27.67
+              humidity: 0.61
+              pressure: 1021.84
+              windSpeed: 14.07
+              windGust: 23.52
+              windGustTime: 1762714800
+              windBearing: 327
+              cloudCover: 0.43
+              uvIndex: 3.52
+              uvIndexTime: 1762714800
+              visibility: 9.68
+              temperatureMin: 29.77
+              temperatureMinTime: 1762750800
+              temperatureMax: 51.69
+              temperatureMaxTime: 1762668000
+              apparentTemperatureMin: 19.21
+              apparentTemperatureMinTime: 1762747200
+              apparentTemperatureMax: 43.62
+              apparentTemperatureMaxTime: 1762668000
+              smokeMax: 0.66
+              smokeMaxTime: 1762714800
+              liquidAccumulation: 0
+              snowAccumulation: 0
+              iceAccumulation: 0
+              fireIndexMax: 29.2
+              fireIndexMaxTime: 1762732800
+              solar: 558.76
+              solarMax: 1762714800
+              cape: 19
+              capeMax: 1762707600
+          alerts:
+          - title: Flood Warning
+            regions:
+            - "Alexander, IL"
+            severity: Severe
+            time: 1715357220
+            expires: 1715451300
+            description: "...The Flood Warning is extended for the following river\
+              \ in Illinois...Missouri...Kentucky...  Mississippi River at Cape Girardeau,\
+              \ Thebes, and Hickman.  .With recent heavy rainfall, waters are rising\
+              \ on the Mississippi River with crests in minor flood at Cape Girardeau,\
+              \ Thebes, and Hickman early next week.  For the Mississippi River...including\
+              \ Cape Girardeau, Thebes, Hickman...Minor flooding is forecast.  * WHAT...Minor\
+              \ flooding is occurring and minor flooding is forecast.  * WHERE...Mississippi\
+              \ River at Cape Girardeau.  * WHEN...Until Friday, May 17.  * IMPACTS...At\
+              \ 36.0 feet, The flood gate on Themis Street closes.  * ADDITIONAL DETAILS...\
+              \ - At 11:00 AM CDT Friday the stage was 34.4 feet. - Forecast...The\
+              \ river is expected to rise to a crest of 36.0 feet Monday morning.\
+              \ It will then fall below flood stage late Thursday evening. - Flood\
+              \ stage is 32.0 feet."
+            uri: https://alerts.weather.gov/search?id=urn:oid:2.49.0.1.840.0.f24c2a5f205f53c0f443861ac62244cc6aecfc9c.002.1
+          flags:
+            sources:
+            - ETOPO1
+            sourceTimes:
+              hrrr_subh: 2025-11-09 18Z
+              rtma_ru: 2025-11-09 20:15Z
+              hrrr_0-18: 2025-11-09 18Z
+              nbm: 2025-11-09 17Z
+              nbm_fire: 2025-11-09 12Z
+              dwd_mosmix: 2025-11-09 13Z
+              ecmwf_ifs: 2025-11-09 00Z
+              hrrr_18-48: 2025-11-09 18Z
+              gfs: 2025-11-09 12Z
+              gefs: 2025-11-09 12Z
+            nearest-station: 15.68
+            units: us
+            version: V2.9.2
+            sourceIDX:
+              hrrr:
+                x: 1134
+                "y": 495
+                lat: 37.31
+                long: -89.53
+              nbm:
+                x: 1483
+                "y": 651
+                lat: 37.31
+                long: -89.53
+              ecmwf_ifs:
+                x: 362
+                "y": 211
+                lat: 37.25
+                long: -89.5
+              dwd_mosmix:
+                stations:
+                  id: "72530"
+                  name: CHICAGO
+                  lat: 41.98
+                  long: -87.9
+              rtma_ru:
+                x: 1483
+                "y": 651
+                lat: 37.31
+                long: -89.53
+              gfs:
+                x: 1082
+                "y": 509
+                lat: 37.25
+                long: -89.5
+              etopo:
+                x: 5429
+                "y": 7638
+                lat: 37.3
+                long: -89.5166
+            processTime: 12026
+            ingestVersion: v29
+            nearestCity: Cape Girardeau
+            nearestCountry: United States
+            nearestSubNational: Missouri
+    ProcessWeatherResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        processed_data:
+          type: object
+          properties:
+            schema_version:
+              type: string
+            hub_id:
+              type: string
+            hub_name:
+              type: string
+            lat:
+              type: number
+            lon:
+              type: number
+            forecast_origin:
+              type: string
+            days:
+              type: array
+              items:
+                type: object
+                properties:
+                  date:
+                    type: string
+                  day:
+                    type: integer
+                  snapshots:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        forecast_timestamp:
+                          type: string
+                        forecast_lead_hours:
+                          type: integer
+                        features:
+                          type: object
+                          properties:
+                            temperature:
+                              type: number
+                            wind_speed:
+                              type: number
+                            wind_gust:
+                              type: number
+                            precip_intensity:
+                              type: integer
+                            pressure:
+                              type: number
+                            humidity:
+                              type: number
+      x-examples:
+        Example 1:
+          message: Data processed successfully for H001
+          processed_data:
+            schema_version: "1.0"
+            hub_id: H001
+            hub_name: Port of Singapore
+            lat: 1.264
+            lon: 103.82
+            forecast_origin: 2025-11-09T01:00:00Z
+            days:
+            - date: 2025-11-09
+              day: 1
+              snapshots:
+              - forecast_timestamp: 2025-11-09T06:00:00Z
+                forecast_lead_hours: 5
+                features:
+                  temperature: 42.22
+                  wind_speed: 16.98
+                  wind_gust: 27.48
+                  precip_intensity: 0
+                  pressure: 1024.02
+                  humidity: 0.47
+    RiskLocationResponse:
+      type: object
+      properties:
+        data_source:
+          type: string
+        dataset_type:
+          type: string
+        dataset_id:
+          type: string
+        time_object:
+          type: object
+          properties:
+            timestamp:
+              type: string
+            timezone:
+              type: string
+        events:
+          type: array
+          items:
+            type: object
+            properties:
+              time_object:
+                type: object
+                properties:
+                  timestamp:
+                    type: string
+                  duration:
+                    type: integer
+                  duration_unit:
+                    type: string
+                  timezone:
+                    type: string
+              event_type:
+                type: string
+              attribute:
+                type: object
+                properties:
+                  hub_id:
+                    type: string
+                  hub_name:
+                    type: string
+                  day:
+                    type: integer
+                  date:
+                    type: string
+                  peak_risk_score:
+                    type: number
+                  mean_risk_score:
+                    type: number
+                  risk_level:
+                    type: string
+                  primary_driver:
+                    type: string
+                  worst_interval:
+                    type: string
+                  snapshots:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        forecast_timestamp:
+                          type: string
+                        forecast_lead_hours:
+                          type: integer
+                        risk_score:
+                          type: number
+                        risk_level:
+                          type: string
+                        primary_driver:
+                          type: string
+                  model_version:
+                    type: string
+                  lat:
+                    type: number
+                  lon:
+                    type: number
+                  outlook_risk_score:
+                    type: number
+                  outlook_risk_level:
+                    type: string
+                  peak_day:
+                    type: string
+                  peak_day_number:
+                    type: integer
+                  forecast_origin:
+                    type: string
+                  days_assessed:
+                    type: integer
+      description: ""
+      x-examples:
+        Example 1:
+          data_source: Pirate Weather API (GFS)
+          dataset_type: Supply Chain Disruption Risk Assessment
+          dataset_id: "s3://{bucket}/risk/{hub_id}/latest.json"
+          time_object:
+            timestamp: 2026-03-14 04:00:00
+            timezone: UTC
+          events:
+          - time_object:
+              timestamp: 2026-03-14T00:00:00
+              duration: 1
+              duration_unit: day
+              timezone: UTC
+            event_type: daily_risk_assessment
+            attribute:
+              hub_id: H001
+              hub_name: Jebel Ali Port
+              day: 1
+              date: 2026-03-14
+              peak_risk_score: 0.7234
+              mean_risk_score: 0.5123
+              risk_level: High
+              primary_driver: Wind Gust
+              worst_interval: 2026-03-14T12:00:00Z
+              snapshots:
+              - forecast_timestamp: 2026-03-14T00:00:00Z
+                forecast_lead_hours: 0
+                risk_score: 0.4521
+                risk_level: Elevated
+                primary_driver: Precip Intensity
+              model_version: rf_v1.0
+          - time_object:
+              timestamp: 2026-03-10T00:00:00Z
+              duration: 7
+              duration_unit: day
+              timezone: UTC
+            event_type: seven_day_outlook
+            attribute:
+              hub_id: H001
+              hub_name: Jebel Ali Port
+              lat: 25.065
+              lon: 55.13
+              outlook_risk_score: 0.7234
+              outlook_risk_level: High
+              peak_day: 2026-03-14
+              peak_day_number: 5
+              forecast_origin: 2026-03-10T00:00:00Z
+              days_assessed: 7
+              model_version: rf_v1.0
+    IngestResponse:
+      title: IngestResponse
+      type: object
+      properties:
+        message:
+          type: string
+          example: success
+  parameters:
+    HubId:
+      name: hub_id
+      in: path
+      description: Unique identifier for the supply chain hub.
+      required: true
+      style: simple
+      explode: false
+      schema:
+        type: string
+      example: H001
+    Date:
+      name: date
+      in: query
+      description: Target date in `DD-MM-YYYY` format.
+      required: true
+      style: form
+      explode: true
+      schema:
+        pattern: "^\\d{2}-\\d{2}-\\d{4}$"
+        type: string
+      example: 08-03-2026
