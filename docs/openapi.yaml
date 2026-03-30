@@ -17,11 +17,75 @@ servers:
     stage:
       default: dev
 tags:
+- name: Location microservice
 - name: Data collection microservice
 - name: Data retrieval microservice
 - name: Data processing microservice
 - name: Analytics microservice
 paths:
+  /ese/v1/location:
+    post:
+      tags:
+      - Location microservice
+      summary: Create a new hub with given lat/lon combination
+      description: |
+        Creates a new dynamic hub and returns a unique hub_id to use for other microservice operations. If lat/lon exists, returns existing hub_id.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLocationRequest"
+        required: true
+      responses:
+        "200":
+          description: Unique hub_id for created hub with given lat/lon combination
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateLocationResponse"
+        "400":
+          description: "Missing request body or required field, name has invalid characters\
+            \ (other than letters, numbers, apostrophe, comma, dash, and spaces)."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /ese/v1/location/{hub_id}:
+    get:
+      tags:
+      - Location microservice
+      summary: Retrieve hub info by hub_id
+      description: |
+        Checks if a hub exists with hub_id and returns that hub's info.
+      parameters:
+      - name: hub_id
+        in: path
+        description: Unique identifier for the supply chain hub.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+        example: H001
+      responses:
+        "200":
+          description: Hub info for requested hub_id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetLocationResponse"
+        "400":
+          description: Invalid hub_id (no hub exists with this hub_id)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Missing hub_id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /ese/v1/ingest/weather/{hub_id}:
     post:
       tags:
@@ -54,6 +118,12 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Missing data bucket configuration or PirateWeather API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Failed to fetch weather data from PirateWeather
           content:
             application/json:
               schema:
@@ -201,7 +271,7 @@ paths:
       - Analytics microservice
       summary: Retrieve the latest risk analysis for a hub
       description: |
-        Returns the recent risk score breakdown for the specified hub and date. If no date is provided, returns the risk analysis for  The backend validates `hub_id`.
+        Returns the recent risk score breakdown for the specified hub and date. If no date is provided, returns the risk analysis for current date. The backend validates `hub_id`.
       parameters:
       - name: hub_id
         in: path
@@ -2241,6 +2311,77 @@ components:
         message:
           type: string
           example: success
+    CreateLocationRequest:
+      title: CreateLocationRequest
+      required:
+      - lat
+      - lon
+      - name
+      type: object
+      properties:
+        name:
+          type: string
+        lat:
+          type: number
+          x-stoplight:
+            id: l2570ns59rl6a
+        lon:
+          type: number
+          x-stoplight:
+            id: mfhagigpsctba
+      x-examples:
+        Example 1:
+          name: Port of Shanghai
+          lat: 31.388999999999999346300683100707828998565673828125
+          lon: 121.61799999999999499777914024889469146728515625
+    CreateLocationResponse:
+      title: CreateLocationResponse
+      type: object
+      properties:
+        hub_id:
+          type: string
+      x-examples:
+        Example 1:
+          hub_id: LOC_123
+    GetLocationResponse:
+      title: GetLocationResponse
+      type: object
+      properties:
+        hub_id:
+          type: string
+        lat_lon:
+          type: string
+          x-stoplight:
+            id: 2xsqay23ytwkx
+        name:
+          type: string
+          x-stoplight:
+            id: q1jgnjuorx5z4
+        lat:
+          type: number
+          x-stoplight:
+            id: spv5duth6z06z
+        lon:
+          type: number
+          x-stoplight:
+            id: xh41mkgmu9aqz
+        type:
+          type: string
+          x-stoplight:
+            id: 1dupvwmtlou47
+        created_at:
+          type: string
+          x-stoplight:
+            id: fwt8oaztwxigv
+      x-examples:
+        Example 1:
+          hub_id: H001
+          lat_lon: -33.8688:151.2093
+          name: Sydney
+          lat: -33.86880000000000023874235921539366245269775390625
+          lon: 151.209300000000013142198440618813037872314453125
+          type: dynamic
+          created_at: 2026-03-29T00:00:00
   parameters:
     HubId:
       name: hub_id
