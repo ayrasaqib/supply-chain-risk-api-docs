@@ -2321,67 +2321,45 @@ components:
       properties:
         name:
           type: string
+          example: Port of Shanghai
         lat:
           type: number
-          x-stoplight:
-            id: l2570ns59rl6a
+          example: 31.389
         lon:
           type: number
-          x-stoplight:
-            id: mfhagigpsctba
-      x-examples:
-        Example 1:
-          name: Port of Shanghai
-          lat: 31.388999999999999346300683100707828998565673828125
-          lon: 121.61799999999999499777914024889469146728515625
+          example: 121.618
     CreateLocationResponse:
       title: CreateLocationResponse
       type: object
       properties:
         hub_id:
           type: string
-      x-examples:
-        Example 1:
-          hub_id: LOC_123
+          example: LOC_123
     GetLocationResponse:
       title: GetLocationResponse
       type: object
       properties:
         hub_id:
           type: string
+          example: LOC_123
         lat_lon:
           type: string
-          x-stoplight:
-            id: 2xsqay23ytwkx
+          example: -33.869:151.209
         name:
           type: string
-          x-stoplight:
-            id: q1jgnjuorx5z4
+          example: Sydney
         lat:
           type: number
-          x-stoplight:
-            id: spv5duth6z06z
+          example: -33.869
         lon:
           type: number
-          x-stoplight:
-            id: xh41mkgmu9aqz
+          example: 151.209
         type:
           type: string
-          x-stoplight:
-            id: 1dupvwmtlou47
+          example: dynamic
         created_at:
           type: string
-          x-stoplight:
-            id: fwt8oaztwxigv
-      x-examples:
-        Example 1:
-          hub_id: H001
-          lat_lon: -33.8688:151.2093
-          name: Sydney
-          lat: -33.86880000000000023874235921539366245269775390625
-          lon: 151.209300000000013142198440618813037872314453125
-          type: dynamic
-          created_at: 2026-03-29T00:00:00
+          example: 2026-03-29T00:00:00
   parameters:
     HubId:
       name: hub_id
