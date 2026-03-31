@@ -2,7 +2,7 @@ openapi: 3.0.4
 info:
   title: Supply Chain Risk API
   description: |
-    OpenAPI contract for the location, weather ingestion, retrieval and processing, and risk analytics endpoints exposed through API Gateway and backed by AWS Lambda.
+    API for the weather ingestion, retrieval and processing, and risk analytics endpoints and location endpoints to create a hub_id for these.
   version: 1.0.0
 servers:
 - url: 'https://8j2uou6h19.execute-api.us-east-1.amazonaws.com/dev'
