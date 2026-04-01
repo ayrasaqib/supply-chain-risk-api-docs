@@ -5,7 +5,9 @@ info:
     API for the weather ingestion, retrieval and processing, and risk analytics endpoints and location endpoints to create a hub_id for these.
   version: 1.0.0
 servers:
-- url: 'https://8j2uou6h19.execute-api.us-east-1.amazonaws.com/dev'
+- url: https://virtserver.swaggerhub.com/seng3011-d31/Supply-Chain-Risk-API-spec/1.0.0
+  description: SwaggerHub API Auto Mocking
+- url: 'https://xha8co87b2.execute-api.us-east-1.amazonaws.com/dev'
   description: AWS API Gateway dev deployment
 tags:
 - name: Location microservice
