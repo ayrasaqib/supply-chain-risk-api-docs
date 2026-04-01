@@ -11,7 +11,7 @@ servers:
   description: AWS API Gateway deployment
   variables:
     apiId:
-      default: 8j2uou6h19
+      default: xha8co87b2
     region:
       default: us-east-1
     stage:
