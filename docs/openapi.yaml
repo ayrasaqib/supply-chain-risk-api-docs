@@ -2,19 +2,20 @@ openapi: 3.0.4
 info:
   title: Supply Chain Risk API
   description: |
-    API for the weather ingestion, retrieval and processing, and risk analytics endpoints and location endpoints to create a hub_id for these.
+    OpenAPI contract for the weather ingestion, retrieval, processing, and risk analytics endpoints exposed through API Gateway and backed by AWS Lambda.
   version: 1.0.0
 servers:
 - url: https://virtserver.swaggerhub.com/seng3011-d31/Supply-Chain-Risk-API-spec/1.0.0
   description: SwaggerHub API Auto Mocking
-- url: 'https://xha8co87b2.execute-api.us-east-1.amazonaws.com/dev'
-  description: AWS API Gateway dev deployment
+- url: https://1oj9t7sjq5.execute-api.ap-southeast-2.amazonaws.com/dev
+  description: AWS API Gateway deployment
 tags:
 - name: Location microservice
 - name: Data collection microservice
 - name: Data retrieval microservice
 - name: Data processing microservice
 - name: Analytics microservice
+- name: Watchlist microservice
 paths:
   /ese/v1/location:
     post:
@@ -300,6 +301,94 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: Processed data for hub_id not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /ese/v1/watchlist/{hub_id}/{email}:
+    post:
+      tags:
+      - Watchlist microservice
+      summary: Subscribe an email to a hub watchlist
+      description: Stores email and hub_id item so email can be notified when hub's
+        risk score exceeds 0.6/1
+      parameters:
+      - name: hub_id
+        in: path
+        description: Unique identifier for the supply chain hub.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+        example: H001
+      - name: email
+        in: path
+        description: Email address to receive notification.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+        example: example@gmail.com
+      responses:
+        "200":
+          description: Email subscribed to hub successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WatchlistResponse"
+        "400":
+          description: Missing or invalid hub_id or email
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Database error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      tags:
+      - Watchlist microservice
+      summary: Unsubscribes an email from a hub watchlist
+      description: Removes email and hub_id item stored
+      parameters:
+      - name: hub_id
+        in: path
+        description: Unique identifier for the supply chain hub.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+        example: H001
+      - name: email
+        in: path
+        description: Email address to receive notification.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+        example: example@gmail.com
+      responses:
+        "200":
+          description: Email deleted from hub watchlist successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WatchlistResponse"
+        "400":
+          description: Missing or invalid hub_id or email
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Database error.
           content:
             application/json:
               schema:
@@ -860,8 +949,8 @@ components:
               type: string
       x-examples:
         Example 1:
-          latitude: 37.3034999999999996589394868351519107818603515625
-          longitude: -89.522999999999996134647517465054988861083984375
+          latitude: 37.3035
+          longitude: -89.523
           timezone: America/Chicago
           offset: -6
           elevation: 105
@@ -869,7 +958,7 @@ components:
             time: 1762721160
             summary: Breezy and Mostly Clear
             icon: wind
-            nearestStormDistance: 194.969999999999998863131622783839702606201171875
+            nearestStormDistance: 194.97
             nearestStormBearing: 131
             precipIntensity: 0
             precipProbability: 0
@@ -878,26 +967,26 @@ components:
             rainIntensity: 0
             snowIntensity: 0
             iceIntensity: 0
-            temperature: 42.14999999999999857891452847979962825775146484375
-            apparentTemperature: 29.949999999999999289457264239899814128875732421875
-            dewPoint: 24.21000000000000085265128291212022304534912109375
-            humidity: 0.4899999999999999911182158029987476766109466552734375
-            pressure: 1024.450000000000045474735088646411895751953125
+            temperature: 42.15
+            apparentTemperature: 29.95
+            dewPoint: 24.21
+            humidity: 0.49
+            pressure: 1024.45
             windSpeed: 17.25
-            windGust: 24.92999999999999971578290569595992565155029296875
+            windGust: 24.93
             windBearing: 333
-            cloudCover: 0.14000000000000001332267629550187848508358001708984375
-            uvIndex: 2.189999999999999946709294817992486059665679931640625
+            cloudCover: 0.14
+            uvIndex: 2.19
             visibility: 10
-            ozone: 321.44999999999998863131622783839702606201171875
-            smoke: 0.340000000000000024424906541753443889319896697998046875
-            fireIndex: 27.5799999999999982946974341757595539093017578125
+            ozone: 321.45
+            smoke: 0.34
+            fireIndex: 27.58
             feelsLike: 33.75
             currentDayIce: 0
             currentDayLiquid: 0
             currentDaySnow: 0
             stationPressure: 0
-            solar: 319.73000000000001818989403545856475830078125
+            solar: 319.73
             cape: 3
           minutely:
             summary: Breezy and mostly clear for the hour.
@@ -905,7 +994,7 @@ components:
             data:
             - time: 1762721160
               precipIntensity: 0
-              precipProbability: 0.38000000000000000444089209850062616169452667236328125
+              precipProbability: 0.38
               precipIntensityError: 0
               precipType: none
               rainIntensity: 0
@@ -926,28 +1015,28 @@ components:
               rainIntensity: 0
               snowIntensity: 0
               iceIntensity: 0
-              temperature: 42.219999999999998863131622783839702606201171875
-              apparentTemperature: 31.260000000000001563194018672220408916473388671875
-              dewPoint: 23.85000000000000142108547152020037174224853515625
-              humidity: 0.4699999999999999733546474089962430298328399658203125
-              pressure: 1024.01999999999998181010596454143524169921875
-              stationPressure: 1009.9199999999999590727384202182292938232421875
-              windSpeed: 16.980000000000000426325641456060111522674560546875
-              windGust: 27.480000000000000426325641456060111522674560546875
+              temperature: 42.22
+              apparentTemperature: 31.26
+              dewPoint: 23.85
+              humidity: 0.47
+              pressure: 1024.02
+              stationPressure: 1009.92
+              windSpeed: 16.98
+              windGust: 27.48
               windBearing: 330
-              cloudCover: 0.34999999999999997779553950749686919152736663818359375
-              uvIndex: 2.930000000000000159872115546022541821002960205078125
+              cloudCover: 0.35
+              uvIndex: 2.93
               visibility: 10
-              ozone: 319.30000000000001136868377216160297393798828125
-              smoke: 0.40000000000000002220446049250313080847263336181640625
+              ozone: 319.3
+              smoke: 0.4
               liquidAccumulation: 0
               snowAccumulation: 0
               iceAccumulation: 0
-              nearestStormDistance: 172.159999999999996589394868351519107818603515625
+              nearestStormDistance: 172.16
               nearestStormBearing: 127
-              fireIndex: 27.199999999999999289457264239899814128875732421875
-              feelsLike: 34.38000000000000255795384873636066913604736328125
-              solar: 498.6399999999999863575794734060764312744140625
+              fireIndex: 27.2
+              feelsLike: 34.38
+              solar: 498.64
               cape: 0
           day_night:
             data:
@@ -966,25 +1055,25 @@ components:
               precipIntensityError: 0
               precipAccumulation: 0
               precipType: none
-              temperature: 42.82000000000000028421709430404007434844970703125
-              apparentTemperature: 32.32000000000000028421709430404007434844970703125
-              dewPoint: 29.1700000000000017053025658242404460906982421875
-              humidity: 0.61999999999999999555910790149937383830547332763671875
-              pressure: 1021.05999999999994543031789362430572509765625
-              stationPressure: 1009.9199999999999590727384202182292938232421875
-              windSpeed: 16.14999999999999857891452847979962825775146484375
-              windGust: 26.39999999999999857891452847979962825775146484375
+              temperature: 42.82
+              apparentTemperature: 32.32
+              dewPoint: 29.17
+              humidity: 0.62
+              pressure: 1021.06
+              stationPressure: 1009.92
+              windSpeed: 16.15
+              windGust: 26.4
               windBearing: 328
-              cloudCover: 0.57999999999999996003197111349436454474925994873046875
-              uvIndex: 1.149999999999999911182158029987476766109466552734375
+              cloudCover: 0.58
+              uvIndex: 1.15
               visibility: 10
-              ozone: 317.1200000000000045474735088646411895751953125
-              smoke: 0.11999999999999999555910790149937383830547332763671875
+              ozone: 317.12
+              smoke: 0.12
               liquidAccumulation: 0
               snowAccumulation: 0
               iceAccumulation: 0
-              fireIndex: 22.0799999999999982946974341757595539093017578125
-              solar: 178.719999999999998863131622783839702606201171875
+              fireIndex: 22.08
+              solar: 178.72
               cape: 4
           daily:
             summary: "Drizzle next Sunday, with high temperatures peaking at 71°F\
@@ -998,7 +1087,7 @@ components:
               sunriseTime: 1762691493
               sunsetTime: 1762728710
               duskTime: 1762730390
-              moonPhase: 0.65000000000000002220446049250313080847263336181640625
+              moonPhase: 0.65
               precipIntensity: 0
               precipIntensityMax: 0
               precipIntensityMaxTime: 1762668000
@@ -1011,41 +1100,41 @@ components:
               snowIntensityMax: 0
               iceIntensity: 0
               iceIntensityMax: 0
-              temperatureHigh: 42.82000000000000028421709430404007434844970703125
+              temperatureHigh: 42.82
               temperatureHighTime: 1762707600
-              temperatureLow: 26.60000000000000142108547152020037174224853515625
+              temperatureLow: 26.6
               temperatureLowTime: 1762776000
-              apparentTemperatureHigh: 32.32000000000000028421709430404007434844970703125
+              apparentTemperatureHigh: 32.32
               apparentTemperatureHighTime: 1762714800
-              apparentTemperatureLow: 15.42999999999999971578290569595992565155029296875
+              apparentTemperatureLow: 15.43
               apparentTemperatureLowTime: 1762776000
-              dewPoint: 27.6700000000000017053025658242404460906982421875
-              humidity: 0.60999999999999998667732370449812151491641998291015625
-              pressure: 1021.8400000000000318323145620524883270263671875
-              windSpeed: 14.07000000000000028421709430404007434844970703125
-              windGust: 23.519999999999999573674358543939888477325439453125
+              dewPoint: 27.67
+              humidity: 0.61
+              pressure: 1021.84
+              windSpeed: 14.07
+              windGust: 23.52
               windGustTime: 1762714800
               windBearing: 327
-              cloudCover: 0.429999999999999993338661852249060757458209991455078125
-              uvIndex: 3.520000000000000017763568394002504646778106689453125
+              cloudCover: 0.43
+              uvIndex: 3.52
               uvIndexTime: 1762714800
-              visibility: 9.67999999999999971578290569595992565155029296875
-              temperatureMin: 29.769999999999999573674358543939888477325439453125
+              visibility: 9.68
+              temperatureMin: 29.77
               temperatureMinTime: 1762750800
-              temperatureMax: 51.68999999999999772626324556767940521240234375
+              temperatureMax: 51.69
               temperatureMaxTime: 1762668000
-              apparentTemperatureMin: 19.21000000000000085265128291212022304534912109375
+              apparentTemperatureMin: 19.21
               apparentTemperatureMinTime: 1762747200
-              apparentTemperatureMax: 43.61999999999999744204615126363933086395263671875
+              apparentTemperatureMax: 43.62
               apparentTemperatureMaxTime: 1762668000
-              smokeMax: 0.66000000000000003108624468950438313186168670654296875
+              smokeMax: 0.66
               smokeMaxTime: 1762714800
               liquidAccumulation: 0
               snowAccumulation: 0
               iceAccumulation: 0
-              fireIndexMax: 29.199999999999999289457264239899814128875732421875
+              fireIndexMax: 29.2
               fireIndexMaxTime: 1762732800
-              solar: 558.759999999999990905052982270717620849609375
+              solar: 558.76
               solarMax: 1762714800
               cape: 19
               capeMax: 1762707600
@@ -1084,20 +1173,20 @@ components:
               hrrr_18-48: 2025-11-09 18Z
               gfs: 2025-11-09 12Z
               gefs: 2025-11-09 12Z
-            nearest-station: 15.67999999999999971578290569595992565155029296875
+            nearest-station: 15.68
             units: us
             version: V2.9.2
             sourceIDX:
               hrrr:
                 x: 1134
                 "y": 495
-                lat: 37.31000000000000227373675443232059478759765625
-                long: -89.530000000000001136868377216160297393798828125
+                lat: 37.31
+                long: -89.53
               nbm:
                 x: 1483
                 "y": 651
-                lat: 37.31000000000000227373675443232059478759765625
-                long: -89.530000000000001136868377216160297393798828125
+                lat: 37.31
+                long: -89.53
               ecmwf_ifs:
                 x: 362
                 "y": 211
@@ -1107,13 +1196,13 @@ components:
                 stations:
                   id: "72530"
                   name: CHICAGO
-                  lat: 41.97999999999999687361196265555918216705322265625
-                  long: -87.900000000000005684341886080801486968994140625
+                  lat: 41.98
+                  long: -87.9
               rtma_ru:
                 x: 1483
                 "y": 651
-                lat: 37.31000000000000227373675443232059478759765625
-                long: -89.530000000000001136868377216160297393798828125
+                lat: 37.31
+                long: -89.53
               gfs:
                 x: 1082
                 "y": 509
@@ -1122,8 +1211,8 @@ components:
               etopo:
                 x: 5429
                 "y": 7638
-                lat: 37.2999999999999971578290569595992565155029296875
-                long: -89.5165999999999968395059113390743732452392578125
+                lat: 37.3
+                long: -89.5166
             processTime: 12026
             ingestVersion: v29
             nearestCity: Cape Girardeau
@@ -1182,8 +1271,8 @@ components:
           schema_version: "1.0"
           hub_id: H007
           hub_name: Jebel Ali Port
-          lat: 25.065000000000001278976924368180334568023681640625
-          lon: 55.13000000000000255795384873636066913604736328125
+          lat: 25.065
+          lon: 55.13
           forecast_origin: 2026-03-10T00:00:00Z
           days:
           - date: 2026-03-10
@@ -1192,78 +1281,78 @@ components:
             - forecast_timestamp: 2026-03-10T00:00:00Z
               forecast_lead_hours: 0
               features:
-                temperature: 24.199999999999999289457264239899814128875732421875
-                wind_speed: 16.300000000000000710542735760100185871124267578125
-                wind_gust: 24.800000000000000710542735760100185871124267578125
+                temperature: 24.2
+                wind_speed: 16.3
+                wind_gust: 24.8
                 precip_intensity: 0
-                pressure: 1015.6000000000000227373675443232059478759765625
-                humidity: 0.57999999999999996003197111349436454474925994873046875
+                pressure: 1015.6
+                humidity: 0.58
             - forecast_timestamp: 2026-03-10T06:00:00Z
               forecast_lead_hours: 6
               features:
-                temperature: 27.800000000000000710542735760100185871124267578125
-                wind_speed: 21.39999999999999857891452847979962825775146484375
-                wind_gust: 33.60000000000000142108547152020037174224853515625
+                temperature: 27.8
+                wind_speed: 21.4
+                wind_gust: 33.6
                 precip_intensity: 0
-                pressure: 1014.299999999999954525264911353588104248046875
-                humidity: 0.520000000000000017763568394002504646778106689453125
+                pressure: 1014.3
+                humidity: 0.52
             - forecast_timestamp: 2026-03-10T12:00:00Z
               forecast_lead_hours: 12
               features:
-                temperature: 31.39999999999999857891452847979962825775146484375
-                wind_speed: 28.699999999999999289457264239899814128875732421875
-                wind_gust: 44.10000000000000142108547152020037174224853515625
+                temperature: 31.4
+                wind_speed: 28.7
+                wind_gust: 44.1
                 precip_intensity: 0
-                pressure: 1013.1000000000000227373675443232059478759765625
-                humidity: 0.440000000000000002220446049250313080847263336181640625
+                pressure: 1013.1
+                humidity: 0.44
             - forecast_timestamp: 2026-03-10T18:00:00Z
               forecast_lead_hours: 18
               features:
-                temperature: 26.300000000000000710542735760100185871124267578125
-                wind_speed: 18.89999999999999857891452847979962825775146484375
-                wind_gust: 29.300000000000000710542735760100185871124267578125
+                temperature: 26.3
+                wind_speed: 18.9
+                wind_gust: 29.3
                 precip_intensity: 0
-                pressure: 1014.799999999999954525264911353588104248046875
-                humidity: 0.5500000000000000444089209850062616169452667236328125
+                pressure: 1014.8
+                humidity: 0.55
           - date: 2026-03-11
             day: 2
             snapshots:
             - forecast_timestamp: 2026-03-11T00:00:00Z
               forecast_lead_hours: 24
               features:
-                temperature: 24.199999999999999289457264239899814128875732421875
-                wind_speed: 16.300000000000000710542735760100185871124267578125
-                wind_gust: 24.800000000000000710542735760100185871124267578125
+                temperature: 24.2
+                wind_speed: 16.3
+                wind_gust: 24.8
                 precip_intensity: 0
-                pressure: 1015.6000000000000227373675443232059478759765625
-                humidity: 0.57999999999999996003197111349436454474925994873046875
+                pressure: 1015.6
+                humidity: 0.58
             - forecast_timestamp: 2026-03-11T06:00:00Z
               forecast_lead_hours: 30
               features:
-                temperature: 27.800000000000000710542735760100185871124267578125
-                wind_speed: 21.39999999999999857891452847979962825775146484375
-                wind_gust: 33.60000000000000142108547152020037174224853515625
+                temperature: 27.8
+                wind_speed: 21.4
+                wind_gust: 33.6
                 precip_intensity: 0
-                pressure: 1014.299999999999954525264911353588104248046875
-                humidity: 0.520000000000000017763568394002504646778106689453125
+                pressure: 1014.3
+                humidity: 0.52
             - forecast_timestamp: 2026-03-11T12:00:00Z
               forecast_lead_hours: 36
               features:
-                temperature: 31.39999999999999857891452847979962825775146484375
-                wind_speed: 28.699999999999999289457264239899814128875732421875
-                wind_gust: 44.10000000000000142108547152020037174224853515625
+                temperature: 31.4
+                wind_speed: 28.7
+                wind_gust: 44.1
                 precip_intensity: 0
-                pressure: 1013.1000000000000227373675443232059478759765625
-                humidity: 0.440000000000000002220446049250313080847263336181640625
+                pressure: 1013.1
+                humidity: 0.44
             - forecast_timestamp: 2026-03-11T18:00:00Z
               forecast_lead_hours: 42
               features:
-                temperature: 26.300000000000000710542735760100185871124267578125
-                wind_speed: 18.89999999999999857891452847979962825775146484375
-                wind_gust: 29.300000000000000710542735760100185871124267578125
+                temperature: 26.3
+                wind_speed: 18.9
+                wind_gust: 29.3
                 precip_intensity: 0
-                pressure: 1014.799999999999954525264911353588104248046875
-                humidity: 0.5500000000000000444089209850062616169452667236328125
+                pressure: 1014.8
+                humidity: 0.55
     ProcessWeatherRequest:
       title: ""
       type: object
@@ -1813,8 +1902,8 @@ components:
               type: string
       x-examples:
         Example 1:
-          latitude: 37.3034999999999996589394868351519107818603515625
-          longitude: -89.522999999999996134647517465054988861083984375
+          latitude: 37.3035
+          longitude: -89.523
           timezone: America/Chicago
           offset: -6
           elevation: 105
@@ -1822,7 +1911,7 @@ components:
             time: 1762721160
             summary: Breezy and Mostly Clear
             icon: wind
-            nearestStormDistance: 194.969999999999998863131622783839702606201171875
+            nearestStormDistance: 194.97
             nearestStormBearing: 131
             precipIntensity: 0
             precipProbability: 0
@@ -1831,26 +1920,26 @@ components:
             rainIntensity: 0
             snowIntensity: 0
             iceIntensity: 0
-            temperature: 42.14999999999999857891452847979962825775146484375
-            apparentTemperature: 29.949999999999999289457264239899814128875732421875
-            dewPoint: 24.21000000000000085265128291212022304534912109375
-            humidity: 0.4899999999999999911182158029987476766109466552734375
-            pressure: 1024.450000000000045474735088646411895751953125
+            temperature: 42.15
+            apparentTemperature: 29.95
+            dewPoint: 24.21
+            humidity: 0.49
+            pressure: 1024.45
             windSpeed: 17.25
-            windGust: 24.92999999999999971578290569595992565155029296875
+            windGust: 24.93
             windBearing: 333
-            cloudCover: 0.14000000000000001332267629550187848508358001708984375
-            uvIndex: 2.189999999999999946709294817992486059665679931640625
+            cloudCover: 0.14
+            uvIndex: 2.19
             visibility: 10
-            ozone: 321.44999999999998863131622783839702606201171875
-            smoke: 0.340000000000000024424906541753443889319896697998046875
-            fireIndex: 27.5799999999999982946974341757595539093017578125
+            ozone: 321.45
+            smoke: 0.34
+            fireIndex: 27.58
             feelsLike: 33.75
             currentDayIce: 0
             currentDayLiquid: 0
             currentDaySnow: 0
             stationPressure: 0
-            solar: 319.73000000000001818989403545856475830078125
+            solar: 319.73
             cape: 3
           minutely:
             summary: Breezy and mostly clear for the hour.
@@ -1858,7 +1947,7 @@ components:
             data:
             - time: 1762721160
               precipIntensity: 0
-              precipProbability: 0.38000000000000000444089209850062616169452667236328125
+              precipProbability: 0.38
               precipIntensityError: 0
               precipType: none
               rainIntensity: 0
@@ -1879,28 +1968,28 @@ components:
               rainIntensity: 0
               snowIntensity: 0
               iceIntensity: 0
-              temperature: 42.219999999999998863131622783839702606201171875
-              apparentTemperature: 31.260000000000001563194018672220408916473388671875
-              dewPoint: 23.85000000000000142108547152020037174224853515625
-              humidity: 0.4699999999999999733546474089962430298328399658203125
-              pressure: 1024.01999999999998181010596454143524169921875
-              stationPressure: 1009.9199999999999590727384202182292938232421875
-              windSpeed: 16.980000000000000426325641456060111522674560546875
-              windGust: 27.480000000000000426325641456060111522674560546875
+              temperature: 42.22
+              apparentTemperature: 31.26
+              dewPoint: 23.85
+              humidity: 0.47
+              pressure: 1024.02
+              stationPressure: 1009.92
+              windSpeed: 16.98
+              windGust: 27.48
               windBearing: 330
-              cloudCover: 0.34999999999999997779553950749686919152736663818359375
-              uvIndex: 2.930000000000000159872115546022541821002960205078125
+              cloudCover: 0.35
+              uvIndex: 2.93
               visibility: 10
-              ozone: 319.30000000000001136868377216160297393798828125
-              smoke: 0.40000000000000002220446049250313080847263336181640625
+              ozone: 319.3
+              smoke: 0.4
               liquidAccumulation: 0
               snowAccumulation: 0
               iceAccumulation: 0
-              nearestStormDistance: 172.159999999999996589394868351519107818603515625
+              nearestStormDistance: 172.16
               nearestStormBearing: 127
-              fireIndex: 27.199999999999999289457264239899814128875732421875
-              feelsLike: 34.38000000000000255795384873636066913604736328125
-              solar: 498.6399999999999863575794734060764312744140625
+              fireIndex: 27.2
+              feelsLike: 34.38
+              solar: 498.64
               cape: 0
           day_night:
             data:
@@ -1919,25 +2008,25 @@ components:
               precipIntensityError: 0
               precipAccumulation: 0
               precipType: none
-              temperature: 42.82000000000000028421709430404007434844970703125
-              apparentTemperature: 32.32000000000000028421709430404007434844970703125
-              dewPoint: 29.1700000000000017053025658242404460906982421875
-              humidity: 0.61999999999999999555910790149937383830547332763671875
-              pressure: 1021.05999999999994543031789362430572509765625
-              stationPressure: 1009.9199999999999590727384202182292938232421875
-              windSpeed: 16.14999999999999857891452847979962825775146484375
-              windGust: 26.39999999999999857891452847979962825775146484375
+              temperature: 42.82
+              apparentTemperature: 32.32
+              dewPoint: 29.17
+              humidity: 0.62
+              pressure: 1021.06
+              stationPressure: 1009.92
+              windSpeed: 16.15
+              windGust: 26.4
               windBearing: 328
-              cloudCover: 0.57999999999999996003197111349436454474925994873046875
-              uvIndex: 1.149999999999999911182158029987476766109466552734375
+              cloudCover: 0.58
+              uvIndex: 1.15
               visibility: 10
-              ozone: 317.1200000000000045474735088646411895751953125
-              smoke: 0.11999999999999999555910790149937383830547332763671875
+              ozone: 317.12
+              smoke: 0.12
               liquidAccumulation: 0
               snowAccumulation: 0
               iceAccumulation: 0
-              fireIndex: 22.0799999999999982946974341757595539093017578125
-              solar: 178.719999999999998863131622783839702606201171875
+              fireIndex: 22.08
+              solar: 178.72
               cape: 4
           daily:
             summary: "Drizzle next Sunday, with high temperatures peaking at 71°F\
@@ -1951,7 +2040,7 @@ components:
               sunriseTime: 1762691493
               sunsetTime: 1762728710
               duskTime: 1762730390
-              moonPhase: 0.65000000000000002220446049250313080847263336181640625
+              moonPhase: 0.65
               precipIntensity: 0
               precipIntensityMax: 0
               precipIntensityMaxTime: 1762668000
@@ -1964,41 +2053,41 @@ components:
               snowIntensityMax: 0
               iceIntensity: 0
               iceIntensityMax: 0
-              temperatureHigh: 42.82000000000000028421709430404007434844970703125
+              temperatureHigh: 42.82
               temperatureHighTime: 1762707600
-              temperatureLow: 26.60000000000000142108547152020037174224853515625
+              temperatureLow: 26.6
               temperatureLowTime: 1762776000
-              apparentTemperatureHigh: 32.32000000000000028421709430404007434844970703125
+              apparentTemperatureHigh: 32.32
               apparentTemperatureHighTime: 1762714800
-              apparentTemperatureLow: 15.42999999999999971578290569595992565155029296875
+              apparentTemperatureLow: 15.43
               apparentTemperatureLowTime: 1762776000
-              dewPoint: 27.6700000000000017053025658242404460906982421875
-              humidity: 0.60999999999999998667732370449812151491641998291015625
-              pressure: 1021.8400000000000318323145620524883270263671875
-              windSpeed: 14.07000000000000028421709430404007434844970703125
-              windGust: 23.519999999999999573674358543939888477325439453125
+              dewPoint: 27.67
+              humidity: 0.61
+              pressure: 1021.84
+              windSpeed: 14.07
+              windGust: 23.52
               windGustTime: 1762714800
               windBearing: 327
-              cloudCover: 0.429999999999999993338661852249060757458209991455078125
-              uvIndex: 3.520000000000000017763568394002504646778106689453125
+              cloudCover: 0.43
+              uvIndex: 3.52
               uvIndexTime: 1762714800
-              visibility: 9.67999999999999971578290569595992565155029296875
-              temperatureMin: 29.769999999999999573674358543939888477325439453125
+              visibility: 9.68
+              temperatureMin: 29.77
               temperatureMinTime: 1762750800
-              temperatureMax: 51.68999999999999772626324556767940521240234375
+              temperatureMax: 51.69
               temperatureMaxTime: 1762668000
-              apparentTemperatureMin: 19.21000000000000085265128291212022304534912109375
+              apparentTemperatureMin: 19.21
               apparentTemperatureMinTime: 1762747200
-              apparentTemperatureMax: 43.61999999999999744204615126363933086395263671875
+              apparentTemperatureMax: 43.62
               apparentTemperatureMaxTime: 1762668000
-              smokeMax: 0.66000000000000003108624468950438313186168670654296875
+              smokeMax: 0.66
               smokeMaxTime: 1762714800
               liquidAccumulation: 0
               snowAccumulation: 0
               iceAccumulation: 0
-              fireIndexMax: 29.199999999999999289457264239899814128875732421875
+              fireIndexMax: 29.2
               fireIndexMaxTime: 1762732800
-              solar: 558.759999999999990905052982270717620849609375
+              solar: 558.76
               solarMax: 1762714800
               cape: 19
               capeMax: 1762707600
@@ -2037,20 +2126,20 @@ components:
               hrrr_18-48: 2025-11-09 18Z
               gfs: 2025-11-09 12Z
               gefs: 2025-11-09 12Z
-            nearest-station: 15.67999999999999971578290569595992565155029296875
+            nearest-station: 15.68
             units: us
             version: V2.9.2
             sourceIDX:
               hrrr:
                 x: 1134
                 "y": 495
-                lat: 37.31000000000000227373675443232059478759765625
-                long: -89.530000000000001136868377216160297393798828125
+                lat: 37.31
+                long: -89.53
               nbm:
                 x: 1483
                 "y": 651
-                lat: 37.31000000000000227373675443232059478759765625
-                long: -89.530000000000001136868377216160297393798828125
+                lat: 37.31
+                long: -89.53
               ecmwf_ifs:
                 x: 362
                 "y": 211
@@ -2060,13 +2149,13 @@ components:
                 stations:
                   id: "72530"
                   name: CHICAGO
-                  lat: 41.97999999999999687361196265555918216705322265625
-                  long: -87.900000000000005684341886080801486968994140625
+                  lat: 41.98
+                  long: -87.9
               rtma_ru:
                 x: 1483
                 "y": 651
-                lat: 37.31000000000000227373675443232059478759765625
-                long: -89.530000000000001136868377216160297393798828125
+                lat: 37.31
+                long: -89.53
               gfs:
                 x: 1082
                 "y": 509
@@ -2075,8 +2164,8 @@ components:
               etopo:
                 x: 5429
                 "y": 7638
-                lat: 37.2999999999999971578290569595992565155029296875
-                long: -89.5165999999999968395059113390743732452392578125
+                lat: 37.3
+                long: -89.5166
             processTime: 12026
             ingestVersion: v29
             nearestCity: Cape Girardeau
@@ -2142,8 +2231,8 @@ components:
             schema_version: "1.0"
             hub_id: H001
             hub_name: Port of Singapore
-            lat: 1.2640000000000000124344978758017532527446746826171875
-            lon: 103.81999999999999317878973670303821563720703125
+            lat: 1.264
+            lon: 103.82
             forecast_origin: 2025-11-09T01:00:00Z
             days:
             - date: 2025-11-09
@@ -2152,12 +2241,12 @@ components:
               - forecast_timestamp: 2025-11-09T06:00:00Z
                 forecast_lead_hours: 5
                 features:
-                  temperature: 42.219999999999998863131622783839702606201171875
-                  wind_speed: 16.980000000000000426325641456060111522674560546875
-                  wind_gust: 27.480000000000000426325641456060111522674560546875
+                  temperature: 42.22
+                  wind_speed: 16.98
+                  wind_gust: 27.48
                   precip_intensity: 0
-                  pressure: 1024.01999999999998181010596454143524169921875
-                  humidity: 0.4699999999999999733546474089962430298328399658203125
+                  pressure: 1024.02
+                  humidity: 0.47
     RiskLocationResponse:
       type: object
       properties:
@@ -2267,15 +2356,15 @@ components:
               hub_name: Jebel Ali Port
               day: 1
               date: 2026-03-14
-              peak_risk_score: 0.7234000000000000429878355134860612452030181884765625
-              mean_risk_score: 0.5122999999999999776179038235568441450595855712890625
+              peak_risk_score: 0.7234
+              mean_risk_score: 0.5123
               risk_level: High
               primary_driver: Wind Gust
               worst_interval: 2026-03-14T12:00:00Z
               snapshots:
               - forecast_timestamp: 2026-03-14T00:00:00Z
                 forecast_lead_hours: 0
-                risk_score: 0.452100000000000001865174681370262987911701202392578125
+                risk_score: 0.4521
                 risk_level: Elevated
                 primary_driver: Precip Intensity
               model_version: rf_v1.0
@@ -2288,9 +2377,9 @@ components:
             attribute:
               hub_id: H001
               hub_name: Jebel Ali Port
-              lat: 25.065000000000001278976924368180334568023681640625
-              lon: 55.13000000000000255795384873636066913604736328125
-              outlook_risk_score: 0.7234000000000000429878355134860612452030181884765625
+              lat: 25.065
+              lon: 55.13
+              outlook_risk_score: 0.7234
               outlook_risk_level: High
               peak_day: 2026-03-14
               peak_day_number: 5
@@ -2353,6 +2442,13 @@ components:
         created_at:
           type: string
           example: 2026-03-29T00:00:00
+    WatchlistResponse:
+      title: WatchlistResponse
+      type: object
+      properties:
+        message:
+          type: string
+          example: example@gmail.com added to hub H001
   parameters:
     HubId:
       name: hub_id
@@ -2375,3 +2471,13 @@ components:
         pattern: "^\\d{2}-\\d{2}-\\d{4}$"
         type: string
       example: 08-03-2026
+    Email:
+      name: email
+      in: path
+      description: Email address to receive notification.
+      required: true
+      style: simple
+      explode: false
+      schema:
+        type: string
+      example: example@gmail.com
