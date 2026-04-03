@@ -2,19 +2,28 @@ openapi: 3.0.4
 info:
   title: Supply Chain Risk API
   description: |
-    API for the weather ingestion, retrieval and processing, and risk analytics endpoints and location endpoints to create a hub_id for these.
+    OpenAPI contract for the weather ingestion, retrieval, processing, and risk analytics endpoints exposed through API Gateway and backed by AWS Lambda.
   version: 1.0.0
 servers:
 - url: https://virtserver.swaggerhub.com/seng3011-d31/Supply-Chain-Risk-API-spec/1.0.0
   description: SwaggerHub API Auto Mocking
-- url: 'https://xha8co87b2.execute-api.us-east-1.amazonaws.com/dev'
-  description: AWS API Gateway dev deployment
+- url: https://1oj9t7sjq5.execute-api.ap-southeast-2.amazonaws.com/dev
+- url: "https://{apiId}.execute-api.{region}.amazonaws.com/{stage}"
+  description: AWS API Gateway deployment
+  variables:
+    apiId:
+      default: xha8co87b2
+    region:
+      default: us-east-1
+    stage:
+      default: dev
 tags:
 - name: Location microservice
 - name: Data collection microservice
 - name: Data retrieval microservice
 - name: Data processing microservice
 - name: Analytics microservice
+- name: Watchlist microservice
 paths:
   /ese/v1/location:
     post:
@@ -300,6 +309,94 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: Processed data for hub_id not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /ese/v1/watchlist/{hub_id}/{email}:
+    post:
+      tags:
+      - Watchlist microservice
+      summary: Subscribe an email to a hub watchlist
+      description: Stores email and hub_id item so email can be notified when hub's
+        risk score exceeds 0.6/1
+      parameters:
+      - name: hub_id
+        in: path
+        description: Unique identifier for the supply chain hub.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+        example: H001
+      - name: email
+        in: path
+        description: Email address to receive notification.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+        example: example@gmail.com
+      responses:
+        "200":
+          description: Email subscribed to hub successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WatchlistResponse"
+        "400":
+          description: Missing or invalid hub_id or email
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Database error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      tags:
+      - Watchlist microservice
+      summary: Unsubscribes an email from a hub watchlist
+      description: Removes email and hub_id item stored
+      parameters:
+      - name: hub_id
+        in: path
+        description: Unique identifier for the supply chain hub.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+        example: H001
+      - name: email
+        in: path
+        description: Email address to receive notification.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+        example: example@gmail.com
+      responses:
+        "200":
+          description: Email deleted from hub watchlist successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WatchlistResponse"
+        "400":
+          description: Missing or invalid hub_id or email
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Database error.
           content:
             application/json:
               schema:
@@ -2353,6 +2450,13 @@ components:
         created_at:
           type: string
           example: 2026-03-29T00:00:00
+    WatchlistResponse:
+      title: WatchlistResponse
+      type: object
+      properties:
+        message:
+          type: string
+          example: example@gmail.com added to hub H001
   parameters:
     HubId:
       name: hub_id
@@ -2375,3 +2479,13 @@ components:
         pattern: "^\\d{2}-\\d{2}-\\d{4}$"
         type: string
       example: 08-03-2026
+    Email:
+      name: email
+      in: path
+      description: Email address to receive notification.
+      required: true
+      style: simple
+      explode: false
+      schema:
+        type: string
+      example: example@gmail.com
