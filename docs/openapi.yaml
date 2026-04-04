@@ -7,8 +7,8 @@ info:
 servers:
 - url: https://virtserver.swaggerhub.com/seng3011-d31/Supply-Chain-Risk-API-spec/1.0.0
   description: SwaggerHub API Auto Mocking
-- url: https://1oj9t7sjq5.execute-api.ap-southeast-2.amazonaws.com/dev
-  description: AWS API Gateway dev deployment
+- url: https://ljtwsbvd8l.execute-api.ap-southeast-2.amazonaws.com/prod
+  description: AWS API Gateway deployment (production)
 tags:
 - name: Location microservice
 - name: Data collection microservice
