@@ -41,7 +41,9 @@ paths:
                 $ref: "#/components/schemas/CreateLocationResponse"
         "400":
           description: "Missing request body or required field, name has invalid characters\
-            \ (other than letters, numbers, apostrophe, comma, dash, and spaces)."
+            \ (other than letters, numbers, apostrophe, comma, dash, and spaces),\
+            \ latitude is not between -90 and 90 or longitude is not between -180\
+            \ and 180"
           content:
             application/json:
               schema:
