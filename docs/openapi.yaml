@@ -101,18 +101,19 @@ paths:
         explode: true
         schema:
           type: string
+          enum: [dynamic, scheduled]
       - name: limit
         in: query
-        description: "Imposes maximum limit on number of hubs in list, if omitted retrieves everything"
+        description: "Maximum number of hubs to return. If omitted, all hubs are returned."
         required: false
         style: form
         explode: true
         schema:
-          type: number
+          type: integer
           example: 50
       responses:
         "200":
-          description: Hub info for all hubs retrieved
+          description: List of hubs matching the provided filters
           content:
             application/json:
               schema:
