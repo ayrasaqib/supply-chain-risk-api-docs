@@ -90,7 +90,7 @@ paths:
       - Location microservice
       summary: Retrieve list of hubs
       description: |
-        Lists all hubs stored in database, with an optional filter available for dynamic or scheduled hubs
+        Lists all hubs stored in database, with an optional filter available for dynamic or scheduled hubs and optional limit for number of hubs
       parameters:
       - name: type
         in: query
@@ -101,6 +101,15 @@ paths:
         explode: true
         schema:
           type: string
+      - name: type
+        in: query
+        description: "Imposes maximum limit on number of hubs in list, if omitted retrieves everything"
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: number
+          example: 50
       responses:
         "200":
           description: Hub info for all hubs retrieved
@@ -109,7 +118,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ListLocationResponse"
         "400":
-          description: Invalid type filter
+          description: Invalid type filter, limit is not positive integer
           content:
             application/json:
               schema:
@@ -299,7 +308,7 @@ paths:
       - Analytics microservice
       summary: Retrieve the latest risk analysis for a hub
       description: |
-        Returns the recent risk score breakdown for the specified hub and date. If no date is provided, returns the risk analysis for current date. The backend validates `hub_id`.
+        Returns the most recent risk analysis for the specified hub and date depending on when ingestion/processing was recently performed. The backend validates `hub_id`.
       parameters:
       - name: hub_id
         in: path
@@ -310,16 +319,6 @@ paths:
         schema:
           type: string
         example: H001
-      - name: date
-        in: query
-        description: Target date in `DD-MM-YYYY` format.
-        required: false
-        style: form
-        explode: true
-        schema:
-          pattern: "^\\d{2}-\\d{2}-\\d{4}$"
-          type: string
-        example: 08-03-2026
       responses:
         "200":
           description: Latest risk score for the hub_id.
@@ -328,7 +327,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/RiskLocationResponse"
         "400":
-          description: "Invalid hub_id or date format, incorrect processed data format."
+          description: "Invalid hub_id."
           content:
             application/json:
               schema:
