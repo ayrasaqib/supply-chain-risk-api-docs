@@ -101,7 +101,7 @@ paths:
         explode: true
         schema:
           type: string
-      - name: type
+      - name: limit
         in: query
         description: "Imposes maximum limit on number of hubs in list, if omitted retrieves everything"
         required: false
