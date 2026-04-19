@@ -94,14 +94,14 @@ paths:
       parameters:
       - name: type
         in: query
-        description: "To filter hubs list, either \"dynamic\" or \"scheduled\" or\
+        description: "To filter hubs list, either \"dynamic\" or \"monitored\" or\
           \ omitted"
         required: false
         style: form
         explode: true
         schema:
           type: string
-          enum: [dynamic, scheduled]
+          enum: [dynamic, monitored]
       - name: limit
         in: query
         description: "Maximum number of hubs to return. If omitted, all hubs are returned."
