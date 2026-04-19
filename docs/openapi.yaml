@@ -309,7 +309,7 @@ paths:
       - Analytics microservice
       summary: Retrieve the latest risk analysis for a hub
       description: |
-        Returns the most recent risk analysis for the specified hub and date depending on when ingestion/processing was recently performed. The backend validates `hub_id`.
+        Returns the most recent risk analysis for the specified hub depending on when ingestion/processing was recently performed. May need to wait for automated pipeline to complete before recent data is available.
       parameters:
       - name: hub_id
         in: path
