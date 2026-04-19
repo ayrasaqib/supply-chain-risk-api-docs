@@ -101,6 +101,7 @@ paths:
         explode: true
         schema:
           type: string
+          enum: [dynamic, monitored]
       - name: limit
         in: query
         description: "Maximum number of hubs to return. If omitted, all hubs are returned."
